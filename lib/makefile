@@ -1,0 +1,72 @@
+ifeq ($(LHAPDF),)
+   LHAPDF = $(HOME)/local/local
+endif 
+
+LHAPDFINC = $(shell $(LHAPDF)/bin/lhapdf-config --incdir)
+LHAPDFLIB = $(shell $(LHAPDF)/bin/lhapdf-config --libdir)
+
+
+
+CC  = gcc
+CXX = g++
+FC  = gfortran
+AR  = ar
+RANLIB = ranlib
+
+IFLAGS = -I. -I../src/Hathor -I../src/Hathor/TopPairs \
+	-I../src/Hathor/SingleTop -I$(LHAPDFINC)
+
+MYLIBS =  -L $(LHAPDFLIB)  -lLHAPDF
+
+LFLAGS := $(MYLIBS) $(LFLAGS) -lgfortranbegin -lgfortran -lm
+FFLAGS := -ffixed-line-length-132
+
+# default configuration
+CFLAGS := $(CFLAGS) -O2 -Wall
+FFLAGS := $(FFLAGS)
+
+OBJECTS = AbstractHathor.o Hathor.o HathorFits.o ranlxd.o mstwpdf.o \
+          HathorPdf.o SgTop.o SgTopSChannel.o SgTopTChannel.o SgTopWtChannel.o \
+          SplittingFunction.o PartonicCrossSection.o \
+          HathorWeakCorrections.o SingleTopGrids.o 
+
+VPATH = ../src:../src/Hathor:../src/Hathor/TopPairs:../src/Hathor/SingleTop
+VPATH += :../src/ranlux-3.3:../src/mstw
+
+lib: $(OBJECTS) libff.a
+	$(AR) crvs ./libHathor.a $(OBJECTS)
+	$(RANLIB) ./libHathor.a
+
+libff.a:
+	cd ../src/ff && make
+	mv ../src/ff/libff.a .
+
+javalib: $(OBJECTS) Hathor4Java.o libff.a
+	g++ $(CFLAGS) -o libHathor4Java.so  Hathor4Java.o $(IFLAGS) \
+	$(OBJECTS) libff.a
+
+ranlxd.o: ranlxd.c ranlxd.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.cxx
+	$(CXX) $(CFLAGS) $(IFLAGS) -c -o $@ $<
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(IFLAGS) -c -o $@ $<
+
+%.o: %.F
+	$(FC) $(FFLAGS) $(IFLAGS) -c -o $@ $<
+
+%.o: %.f
+	$(FC) $(FFLAGS) $(IFLAGS) -c -o $@ $<
+
+$(OBJECTS) : Hathor.h HathorVegas.h HathorPdf.h SingleTopGrids.h \
+	HathorWeakCorrections.h 
+
+clean:
+	rm -f $(OBJECTS) 
+
+distclean: clean
+	rm -f libHathor.a libHathor4Java.so Hathor4Java.o libff.a
+
+
