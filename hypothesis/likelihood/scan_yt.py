@@ -4,30 +4,25 @@ import ROOT as r
 from math import log
 from math import sqrt
 
-Uncert = [0.07] #[0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2] #0.07
+Uncert = [0.1] #[0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2] #0.07
 #TimesLumi = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 timeslumi = 1
-Nexp = 1
-RecoBins = 150
+Nexp = 200
+RecoBins = 100
 EvtRatio = 1.0050307907
 
 OutfileName = "./ensemble_mtt_0.1.root"
 
 fSM = r.TFile("~yduh/local/Hathor-2.1-beta/results/reco/yukawa_2Dreweighing/tt_PowhegP8.root")
 fNP = r.TFile("~yduh/local/Hathor-2.1-beta/results/reco/yukawa2_2Dreweighing/tt_PowhegP8.root")
-fDATA = r.TFile("~yduh/local/Hathor-2.1-beta/results/reco/DATA/DATA.root")
+fDATA = r.TFile("~yduh/local/Hathor-2.1-beta/results/reco/Data/DATA.root")
 hmtt_SM = fSM.Get("YUKAWA_RECO/yukawa_Mtt")
 hmtt_NP = fNP.Get("YUKAWA_RECO/yukawa_Mtt")
 hmtt_DATA = fDATA.Get("RECO/all_tt_M")
-mergebins = 10 #int(hmtt_SM.GetXaxis().GetNbins()/RecoBins)  40 GeV/bin
+mergebins = 15 #int(hmtt_SM.GetXaxis().GetNbins()/RecoBins)
 mttmerge_SM = hmtt_SM.Rebin(mergebins)
 mttmerge_NP = hmtt_NP.Rebin(mergebins)
-mttmerge_DATA = hmtt_DATA.Rebin(10)
-
-NumData = mttmerge_DATA.GetEntries()
-mttmerge_SM.Scale(NumData*timeslumi/mttmerge_SM.GetEntries()) #hmtt_SM.Rebin(mergebins)
-mttmerge_NP.Scale(NumData*timeslumi* EvtRatio/mttmerge_NP.GetEntries()) #hmtt_NP.Rebin(mergebins)
-#mttmerge_DATA.Scale(NumData*timeslumi/mttmerge_DATA.GetEntries())
+mttmerge_DATA = hmtt_DATA.Rebin(15)
 
 #minf = -1100
 #maxf = -600
@@ -58,14 +53,12 @@ def Q(Nsig, modelType, sys):
 	for exp in range(Nexp):
 		mttrandom_SM[exp] = TH1D("SMPseudo%s"%exp, "SM pseudo", RecoBins, 0, 3000)
 		mttrandom_SM[exp].FillRandom(mttmerge_SM, NsigList[exp])
-		#mttrandom_SM[exp] = mttmerge_SM.Scale(NsigList[exp])
 		mttrandom_NP[exp] = TH1D("NPPseudo%s"%exp, "NP pseudo", RecoBins, 0, 3000)
 		mttrandom_NP[exp].FillRandom(mttmerge_NP, NsigList[exp])
 
 		logL_SM = 0
 		logL_NP = 0
-		test = 0
-		for mtt in range(310,1010, 20):
+		for mtt in range(300,1000, 30):
 			SM_mu_i = mttmerge_SM.GetBinContent(mttmerge_SM.FindFixBin(mtt)) # expected num
 			SM_k_i = mttrandom_SM[exp].GetBinContent(mttrandom_SM[exp].FindFixBin(mtt)) # observed num
 			NP_mu_i = mttmerge_NP.GetBinContent(mttmerge_NP.FindFixBin(mtt)) # expected num
@@ -74,25 +67,19 @@ def Q(Nsig, modelType, sys):
 			#logL_SM = SM_k_i* log(SM_mu_i) - SM_mu_i + logL_SM
 			#logL_NP = NP_k_i* log(NP_mu_i) - NP_mu_i + logL_NP
 			#print logL_SM, logL_NP
-			logL_SM = SM_k_i* (log(NP_mu_i) - log(SM_mu_i)) -(NP_mu_i - SM_mu_i) + logL_SM
-			logL_NP = NP_k_i* (log(NP_mu_i) - log(SM_mu_i)) -(NP_mu_i - SM_mu_i) + logL_NP
-			#test = (NP_mu_i - SM_mu_i) + test
-			print mtt, NP_mu_i, SM_mu_i, NsigList[exp], " random :", NP_k_i, SM_k_i
-		#print 'test =', test
+			logL_SM = SM_k_i* (log(NP_mu_i) - log(SM_mu_i)) + logL_SM
+			logL_NP = NP_k_i* (log(NP_mu_i) - log(SM_mu_i)) + logL_NP
 		likeQ_SM.append(-2* logL_SM)
 		likeQ_NP.append(-2* logL_NP)
-		#print -2*logL_SM, -2*logL_NP
 
 
-	logL_Data = 0
-	for mtt in range(310, 1010, 20):
+	for mtt in range(300, 1000, 30):
 		SM_mu_i = mttmerge_SM.GetBinContent(mttmerge_SM.FindFixBin(mtt))
 		NP_mu_i = mttmerge_NP.GetBinContent(mttmerge_NP.FindFixBin(mtt))
-		Data_k_i = mttmerge_DATA.GetBinContent(mttmerge_DATA.FindFixBin(mtt))
+		Data_k_i = mttmerge_Data.GetBinContent(mttmerge_Data.FindFixBin(mtt))
 
-		logL_Data = Data_k_i* (log(NP_mu_i) - log(SM_mu_i)) -(NP_mu_i - SM_mu_i) + logL_Data
-		print mtt, Data_k_i
-	#print "data = ", -2* logL_Data
+		logL_Data = Data_k_i* (log(NP_mu_i) - log(SM_mu_i)) + logL_Data
+
 
 	if modelType == 'SM':
 		model = likeQ_SM
@@ -148,8 +135,8 @@ for i, uncert in enumerate(Uncert):
 #	OutFile.mkdir("timeslumi%s"%str(timeslumi))
 #	OutFile.cd("timeslumi%s"%str(timeslumi))
 
-	minf = -500 #-1300 #Q(30000*timeslumi, 'SM', uncert)[]
-	maxf = 500 #-400
+	minf = -1300 #Q(30000*timeslumi, 'SM', uncert)[]
+	maxf = -400
 	Nbins = (maxf - minf)/20
 
 	histQ_SM[i] = r.TH1D("LikeQ_SM%s"%str(uncert), "SM like Q dist", Nbins, minf, maxf)
@@ -159,17 +146,16 @@ for i, uncert in enumerate(Uncert):
 #	histQ_NP = r.TH1D("LikeQ_NP%s"%str(timeslumi), "NP like Q dist", 250, minf, maxf)
 
 	for exp in range(Nexp):
-		histQ_SM[i].Fill(Q(NumData*timeslumi, 'SM', uncert)[exp])
-		histQ_NP[i].Fill(Q(NumData*timeslumi* EvtRatio, 'NP', uncert)[exp])
+		histQ_SM[i].Fill(Q(30000*timeslumi, 'SM', uncert)[exp])
+		histQ_NP[i].Fill(Q(30000*timeslumi* EvtRatio, 'NP', uncert)[exp])
 
 	ensemblefit(histQ_SM[i], histQ_NP[i], minf, maxf)
 	histQ_SM[i].Write()
 	histQ_NP[i].Write()
 
-	print Q(NumData*timeslumi, 'DATA', uncert)
-	#data_line = r.TLine(Q(NumData*timeslumi, 'DATA', uncert)[exp], 0, Q(NumData*timeslumi, 'DATA', uncert)[exp], sqrt(Nexp))
-	#data_line.SetLineColor(r.kRed)
-	#data_line.Write()
+	data_line = r.TLine(Q(30000*timeslumi, 'DATA', uncert)[exp], 0, Q(30000*timeslumi, 'DATA', uncert)[exp], sqrt(Nexp))
+	data_line.SetLineColor(r.kRed)
+	data_line.Write()
 
 #c1 = r.TCanvas("c1","comparison", 800,1000)
 #c1.Divide(1, 2)
