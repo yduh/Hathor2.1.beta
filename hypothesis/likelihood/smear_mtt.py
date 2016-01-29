@@ -30,10 +30,6 @@ mttmerge_DATA.Scale(timeslumi)
 #mttmerge_SM.Scale(NumData*timeslumi/mttmerge_SM.GetEntries()) #hmtt_SM.Rebin(mergebins)
 #mttmerge_NP.Scale(NumData*timeslumi* EvtRatio/mttmerge_NP.GetEntries()) #hmtt_NP.Rebin(mergebins)
 
-sum_others("1.0y")
-mttmerge_SM = sum_allcomp(mttmerge_SM_sig, sum_others("1.0y"))
-mttmerge_NP = sum_allcomp(mttmerge_NP_sig, sum_others("2.0y"))
-
 
 def sum_others(subpath):
 	path = "~yduh/local/Hathor-2.1-beta/results/reco/%s"%subpath
@@ -58,7 +54,8 @@ def sum_others(subpath):
 	hW.Scale(Wscale)
 	hDY.Scale(DYscale)
 
-	hothers.Clone(hSt)
+	hothers = TH1D("sum_others_%s"%subpath, "others",  1000, 0, 2000)
+	hothers = hSt.Clone()
 	hothers.Add(hTbar)
 	hothers.Add(hT)
 	hothers.Add(hW)
@@ -68,11 +65,11 @@ def sum_others(subpath):
 	return hothers
 
 
-def sum_allcomp(hsig, hothers):
+def sum_allcomp(hsig, hothers, name):
 	hsig.Scale(ttpowheg)
-	hsum = TH1D("%s"%hsum, "hsum", RecoBins, 0, 3000)
-	for i in range(hsig.GetNbins()):
-		if i< hothers.GetNbins():
+	hsum = TH1D("sum_allcomp_%s"%name, "hsum", RecoBins, 0, 3000)
+	for i in range(hsig.GetXaxis().GetNbins()):
+		if i< hothers.GetXaxis().GetNbins():
 			binsum = hsig.GetBinContent(i+1) + hothers.GetBinContent(i+1)
 		else:
 			binsum = hsig.GetBinContent(i+1)
@@ -172,7 +169,13 @@ def ensemblefit(histSM, histNP, minf, maxf):
 
 
 
+
 #################################################################################
+
+mttmerge_SM = sum_allcomp(mttmerge_SM_sig, sum_others("1.0y"), "SM")
+mttmerge_NP = sum_allcomp(mttmerge_NP_sig, sum_others("2.0y"), "NP")
+
+
 histQ_SM = {}
 histQ_NP = {}
 
